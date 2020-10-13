@@ -7,173 +7,90 @@
 #include <sstream>
 #include <functional>
 
-#include "common/util.hpp"
 #include "common/get_action.hpp"
-#include "common/iota.hpp"
-#include "common/slice.hpp"
 #include "common/table.hpp"
-#include "common/filter.hpp"
-#include "common/enumerate.hpp"
-#include "common/zip.hpp"
+#include "common/util/util.hpp"
+#include "common/util/iota.hpp"
+#include "common/util/filter.hpp"
+#include "common/util/zip.hpp"
 
 #include "sheet.hpp"
 
-using namespace std::string_view_literals;
 
-
-void show_sheets(const std::vector<SheetState>& sheets) {
-    Table table(80);
-    table.set_min_width(4);
-
-    table << "\v\n";
-    table << "Name";
-    for(auto& sheet : sheets) table << "\t" << sheet.name;
-    table << "\n\v\n";
-    for(auto [i, name] : slice(enumerate(category_long_names), 0, 6)){
-        table << name;
-        for(auto& sheet : sheets){
-            auto& value = sheet.values[i];
-            table << "\t";
-            if(value.current_value >= 0) table << value.current_value;
-            else if(value.potential_value >= 0) table << "(" << value.potential_value << ")";
-        }
-        table << "\n";
-    }
-
-    table << "\v\n";
-
-    table << "Total";
-    for(auto& sheet : sheets) table << "\t" << sheet.sum_upper;
-    table << "\n";
-    table << "Bonus";
-    for(auto& sheet : sheets) table << "\t" << sheet.bonus;
-    table << "\n";
-    table << "Total upper";
-    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
-    table << "\n";
-
-    table << "\v\n";
-
-    for(auto [i, name] : slice(enumerate(category_long_names), 6, 13)){
-        table << name;
-        for(auto& sheet : sheets){
-            auto& value = sheet.values[i];
-            table << "\t";
-            if(value.current_value >= 0) table << value.current_value;
-            else if(value.potential_value >= 0) table << "(" << value.potential_value << ")";
-        }
-        table << "\n";
-    }
-
-    table << "\v\n";
-    table << "Total lower";
-    for(auto& sheet : sheets) table << "\t" << sheet.total_lower;
-    table << "\n";
-    table << "Total upper";
-    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
-    table << "\n";
-    table << "\v\n";
-    table << "Total";
-    for(auto& sheet : sheets) table << "\t" << sheet.total;
-    table << "\n";
-    table << "\v";
-
-    std::cout << table;
-}
-
-template <class Iter>
-void push_dice_rolls(Iter begin, Iter end)
+template <class Container>
+void push_dice_rolls(Container& container, size_t count)
 {
     static std::random_device rd;
     static std::mt19937 mt(rd());
-    static std::uniform_int_distribution dist(1, 6);
+    static std::uniform_int_distribution dist(0, 5);
 
-    for (auto it = begin; it != end; it++)
-    {
-        *it = dist(mt);
+    for(auto i = 0u; i < count; i++){
+        container[dist(mt)]++;
     }
 }
 
-void do_reroll(std::array<int, 5> &dice)
+void do_reroll(std::array<size_t, 6> &dice)
 {
-    bool success = false;
-    auto target_pos = dice.begin();
-    while (not success)
-    {
-        std::cout << "What do you want to keep?\n";
-        std::string input;
-        std::getline(std::cin, input, '\n');
+    std::cout << "What do you want to keep?\n";
+    std::string input;
+    std::getline(std::cin, input, '\n');
+    size_t kept_dice = 0;
 
-        std::vector<int> keep_values;
-        for(auto c : input){
-            if(isdigit(c)){
-                keep_values.push_back(c - '0');
+    std::array<size_t, 6> keep_dice = {};
+    for(auto c : input){
+        if(isdigit(c)){
+            int dice_val = c-'0';
+            if(dice_val < 1 || dice_val > 6) continue;
+            if(dice[dice_val - 1] > 0){
+                dice[dice_val - 1]--;
+                keep_dice[dice_val - 1]++;
+                kept_dice++;
             }
-        }
-
-        success = true;
-        for (auto keep_val : keep_values)
-        {
-            if (target_pos == dice.end())
-            {
-                success = false;
-                break;
-            }
-            auto pos = std::find_if(target_pos, dice.end(), [&](auto &v) {
-                return v == keep_val;
-            });
-            if (pos == dice.end())
-            {
-                success = false;
-                break;
-            }
-            else
-            {
-                std::swap(*pos, *target_pos);
-            }
-            target_pos++;
         }
     }
-    push_dice_rolls(target_pos, dice.end());
-    std::sort(dice.begin(), dice.end(), std::greater<>());
+    push_dice_rolls(keep_dice, 5 - kept_dice);
+    dice = keep_dice;
 }
+
+enum class PlayerAction {
+    ReRoll,
+    WriteIn
+};
 
 void do_round(SheetState &sheet, const std::vector<SheetState>& sheets)
 {
-    std::array<int, 5> dice;
-    push_dice_rolls(dice.begin(), dice.end());
-    std::sort(dice.begin(), dice.end(), std::greater<>());
+    std::array<size_t, 6> dice_counts = {};
+
+    push_dice_rolls(dice_counts, 5);
     size_t remaining_rolls = 2;
 
     while (true)
     {
-        sheet.calculate_potential_values(dice);
+        sheet.calculate_potential_values(dice_counts);
         show_sheets(sheets);
 
-        for (auto d : dice)
-        {
-            std::cout << d << "\t";
+        for(int i = 5; i >= 0; i--){
+            for(size_t j = 0; j < dice_counts[i]; j++){
+                std::cout << (i+1) << "\t";
+            }
         }
         std::cout << "\n";
 
-        int action = 2;
-        if (remaining_rolls > 0)
-        {
-            std::cout << "What do you want to do?\n";
-            action = get_action({{1, "r", "Reroll [" + std::to_string(remaining_rolls) + " remain]"},
-                                 {2, "w", "Write in"}});
-        }
+        auto action = [&](){
+            if(remaining_rolls == 0) return PlayerAction::WriteIn;
+            return get_action<PlayerAction>({
+                {PlayerAction::ReRoll,  "r", "Reroll [" + std::to_string(remaining_rolls) + " remain]"},
+                {PlayerAction::WriteIn, "w", "Write in"}
+            });
+        }();
 
         switch (action)
         {
-        case 1:
-        { // Reroll
-            do_reroll(dice);
+        case PlayerAction::ReRoll:{
+            do_reroll(dice_counts);
             remaining_rolls--;
-        }
-        break;
-        case 2:
-        { //Write in
+        } break;
+        case PlayerAction::WriteIn: {
             std::vector<std::tuple<int, std::string, std::string>> choices;
             auto nums = iota(0);
 
@@ -191,11 +108,9 @@ void do_round(SheetState &sheet, const std::vector<SheetState>& sheets)
                 )){
                 choices.emplace_back(i, short_name, long_name);
             }
-            auto idx = get_action(choices);
-            sheet.write_in(idx);
+            sheet.write_in(get_action(choices));
             return;
-        }
-        break;
+        } break;
         }
     }
 }
@@ -218,13 +133,20 @@ int yahtzee_main()
     }
     while (std::cin.get() != '\n');
 
-    for(auto i = 0u; i < 13; i++){
-        for(auto& sheet : sheets){
-            do_round(sheet, sheets);
+    while(true){
+        for(auto i = 0u; i < 13; i++){
+            for(auto& sheet : sheets){
+                do_round(sheet, sheets);
+            }
         }
-    }
 
-    show_sheets(sheets);
+        show_sheets(sheets);
+
+        if(!get_confirmation("Play again? ")){
+            break;
+        }
+        for(auto& sheet: sheets) sheet.reset();
+    }
 
     return 0;
 }

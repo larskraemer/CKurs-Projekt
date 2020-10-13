@@ -1,3 +1,5 @@
+#pragma once
+
 #include <array>
 #include <string>
 #include <string_view>
@@ -15,8 +17,9 @@ struct SheetState
         : name(a_name)
     {}
 
-    void calculate_potential_values(const std::array<int, 5> &v);
+    void calculate_potential_values(const std::array<size_t, 6> &v);
     void write_in(size_t idx);
+    void reset();
 
     std::string name;
     std::array<RowData, 13> values = {};
@@ -27,6 +30,8 @@ struct SheetState
     size_t total_lower = 0;
     size_t total = 0;
 };
+
+void show_sheets(const std::vector<SheetState>&);
 
 
 constexpr auto category_short_names = std::array{ 

@@ -10,9 +10,9 @@
 
 #include "card.hpp"
 #include "card_ranking.hpp"
-#include "common/table.hpp"
 #include "common/currency.hpp"
-#include "common/enumerate.hpp"
+#include "common/table.hpp"
+#include "common/util/enumerate.hpp"
 
 namespace Poker{
 class Player;
@@ -68,9 +68,9 @@ public:
             else table << "\t";
         }
         table << "\n";
-        for(auto& player : game.players) table << player.getRoundBet() << Table::newColumn;
+        for(auto& player : game.players) table << player.getRoundBet() << "\t";
         table << "\n";
-        for(auto& player : game.players) table << player.getStack() << Table::newColumn;
+        for(auto& player : game.players) table << player.getStack() << "\t";
         table << "\n\n\v";
         std::cout << table;
         table << "\n";
@@ -84,7 +84,7 @@ public:
             else{
                 table << "??";
             }
-            table << Table::newColumn;
+            table << "\t";
         }
         table << "\n\n\v";
         std::cout << table;

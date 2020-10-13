@@ -5,10 +5,6 @@
 #include <numeric>
 #include <vector>
 
-const std::string_view Table::newColumn = "\t";
-const std::string_view Table::newRow = "\n";
-
-
 std::ostream &operator<<(std::ostream &os, Table &t)
 {
     auto str = t.fields.str();
@@ -27,7 +23,6 @@ std::ostream &operator<<(std::ostream &os, Table &t)
     auto max_columns = std::max_element(fields.begin(), fields.end(), [](const auto &lhs, const auto &rhs) {
                            return lhs.size() < rhs.size();
                        })->size();
-    max_columns = std::max(max_columns, t.m_min_field_width);
 
     for (auto &row : fields)
         row.resize(max_columns);
@@ -44,7 +39,15 @@ std::ostream &operator<<(std::ostream &os, Table &t)
     }
 
     auto total_len = std::accumulate(column_lens.begin(), column_lens.end(), size_t(0));
-    auto total_padding = (t.m_len > total_len + 2) ? (t.m_len - total_len - 2) : 0;
+    auto total_padding = [&](){
+        if(t.m_len > total_len + 4 + 2*column_lens.size()){
+            return t.m_len - total_len - 2;
+        }
+        else{
+            return 2*column_lens.size() + 2;
+        }
+    }();
+    total_len += total_padding;
     auto per_column_padding = total_padding / (column_lens.size() + 1);
     auto extra_padding = total_padding - per_column_padding * (column_lens.size() + 1);
     auto begin_extra_padding = extra_padding / 2;
@@ -54,7 +57,7 @@ std::ostream &operator<<(std::ostream &os, Table &t)
     {
         if (row[0] == "\v")
         {
-            os << repeat("#", t.m_len);
+            os << repeat("#", total_len + 2);
             os << "\n";
             continue;
         }

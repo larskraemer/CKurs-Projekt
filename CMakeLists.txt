@@ -4,7 +4,7 @@ project(Projekt)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall -Wextra -Wpedantic -Werror")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall -Wextra -Wpedantic -Werror -fsanitize=address")
 
 file(GLOB POKER_FILES src/poker/*.cpp)
 file(GLOB BLACKJACK_FILES src/blackjack/*.cpp)

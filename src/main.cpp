@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "get_action.hpp"
-#include "util.hpp"
+#include "util/util.hpp"
 
 int blackjack_main();
 int poker_main();

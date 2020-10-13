@@ -5,9 +5,10 @@
 #include <iomanip>
 #include <numeric>
 
-#include "common/slice.hpp"
 #include "common/table.hpp"
-#include "common/zip.hpp"
+#include "common/util/enumerate.hpp"
+#include "common/util/slice.hpp"
+#include "common/util/zip.hpp"
 
 
 constexpr std::array<int, 6> value_counts(const std::array<int, 5> &v)
@@ -37,9 +38,8 @@ void SheetState::write_in(size_t idx) {
     }
 }
 
-void SheetState::calculate_potential_values(const std::array<int, 5> &v)
+void SheetState::calculate_potential_values(const std::array<size_t, 6> &vc)
 {
-    const auto vc = value_counts(v);
     const auto total_value = [&]() {
         auto ret = 0;
         for (size_t i = 0; i < vc.size(); i++)
@@ -109,4 +109,69 @@ void SheetState::calculate_potential_values(const std::array<int, 5> &v)
             return 50;
         return total_value;
     }();
+}
+
+void SheetState::reset() {
+    *this = SheetState(name);
+}
+
+
+void show_sheets(const std::vector<SheetState>& sheets) {
+    Table table;
+    table.set_min_width(4);
+
+    table << "\v\n";
+    table << "Name";
+    for(auto& sheet : sheets) table << "\t" << sheet.name;
+    table << "\n\v\n";
+    for(auto [i, name] : slice(enumerate(category_long_names), 0, 6)){
+        table << name;
+        for(auto& sheet : sheets){
+            auto& value = sheet.values[i];
+            table << "\t";
+            if(value.current_value >= 0) table << value.current_value;
+            else if(value.potential_value >= 0) table << "(" << value.potential_value << ")";
+        }
+        table << "\n";
+    }
+
+    table << "\v\n";
+
+    table << "Total";
+    for(auto& sheet : sheets) table << "\t" << sheet.sum_upper;
+    table << "\n";
+    table << "Bonus";
+    for(auto& sheet : sheets) table << "\t" << sheet.bonus;
+    table << "\n";
+    table << "Total upper";
+    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
+    table << "\n";
+
+    table << "\v\n";
+
+    for(auto [i, name] : slice(enumerate(category_long_names), 6, 13)){
+        table << name;
+        for(auto& sheet : sheets){
+            auto& value = sheet.values[i];
+            table << "\t";
+            if(value.current_value >= 0) table << value.current_value;
+            else if(value.potential_value >= 0) table << "(" << value.potential_value << ")";
+        }
+        table << "\n";
+    }
+
+    table << "\v\n";
+    table << "Total lower";
+    for(auto& sheet : sheets) table << "\t" << sheet.total_lower;
+    table << "\n";
+    table << "Total upper";
+    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
+    table << "\n";
+    table << "\v\n";
+    table << "Total";
+    for(auto& sheet : sheets) table << "\t" << sheet.total;
+    table << "\n";
+    table << "\v";
+
+    std::cout << table;
 }

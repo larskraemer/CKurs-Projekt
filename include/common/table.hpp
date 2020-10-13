@@ -4,16 +4,13 @@
 #include <sstream>
 #include <string_view>
 
-#include "overloaded.hpp"
-#include "util.hpp"
-#include "zip.hpp"
+#include "util/overloaded.hpp"
+#include "util/util.hpp"
+#include "util/zip.hpp"
 
 
 class Table {
 public:
-    const static std::string_view newColumn;
-    const static std::string_view newRow;
-
     Table(size_t len = 0)
         : m_len{len}
     {}
