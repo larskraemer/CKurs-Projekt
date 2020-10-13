@@ -32,6 +32,9 @@ void SheetState::write_in(size_t idx) {
     }
     total = total_lower + total_upper;
     open_positions--;
+    for(auto& category : values){
+        category.potential_value = -1;
+    }
 }
 
 void SheetState::calculate_potential_values(const std::array<int, 5> &v)
@@ -106,44 +109,4 @@ void SheetState::calculate_potential_values(const std::array<int, 5> &v)
             return 50;
         return total_value;
     }();
-}
-
-
-void SheetState::show(bool show_potential_value) const {
-    Table table(80);
-    table.set_min_width(4);
-
-    auto z = zip(values, category_long_names);
-
-    table << "\v\n";
-    for(auto [row, name] : slice(z, 0, 6)){
-        table << name << "\t";
-        if(row.current_value >= 0)  table << row.current_value;
-        else if(show_potential_value) table << "(" << row.potential_value << ")";
-        table << "\n";
-    }
-
-    table << "\v\n";
-
-    table << "Total\t" << sum_upper << "\n";
-    table << "Bonus\t" << bonus << "\n";
-    table << "Total upper\t" << total_upper << "\n";
-
-    table << "\v\n";
-
-    for(const auto& [row, name] : slice(z, 6, 13)){
-        table << name << "\t";
-        if(row.current_value >= 0)  table << row.current_value;
-        else if(show_potential_value) table << "(" << row.potential_value << ")";
-        table << "\n";
-    }
-
-    table << "\v\n";
-    table << "Total lower\t" << total_lower << "\n";
-    table << "Total upper\t" << total_upper << "\n";
-    table << "\v\n";
-    table << "Total\t" << total << "\n";
-    table << "\v";
-
-    std::cout << table;
 }

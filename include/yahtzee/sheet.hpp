@@ -1,4 +1,5 @@
 #include <array>
+#include <string>
 #include <string_view>
 #include <tuple>
 
@@ -10,11 +11,14 @@ struct RowData
 
 struct SheetState
 {
-    void calculate_potential_values(const std::array<int, 5> &v);
-    void show(bool show_potential_value = false) const;
+    SheetState(std::string a_name)
+        : name(a_name)
+    {}
 
+    void calculate_potential_values(const std::array<int, 5> &v);
     void write_in(size_t idx);
 
+    std::string name;
     std::array<RowData, 13> values = {};
     size_t open_positions = values.size();
     size_t sum_upper = 0;

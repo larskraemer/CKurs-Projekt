@@ -20,6 +20,67 @@
 
 using namespace std::string_view_literals;
 
+
+void show_sheets(const std::vector<SheetState>& sheets) {
+    Table table(80);
+    table.set_min_width(4);
+
+    table << "\v\n";
+    table << "Name";
+    for(auto& sheet : sheets) table << "\t" << sheet.name;
+    table << "\n\v\n";
+    for(auto [i, name] : slice(enumerate(category_long_names), 0, 6)){
+        table << name;
+        for(auto& sheet : sheets){
+            auto& value = sheet.values[i];
+            table << "\t";
+            if(value.current_value >= 0) table << value.current_value;
+            else if(value.potential_value >= 0) table << "(" << value.potential_value << ")";
+        }
+        table << "\n";
+    }
+
+    table << "\v\n";
+
+    table << "Total";
+    for(auto& sheet : sheets) table << "\t" << sheet.sum_upper;
+    table << "\n";
+    table << "Bonus";
+    for(auto& sheet : sheets) table << "\t" << sheet.bonus;
+    table << "\n";
+    table << "Total upper";
+    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
+    table << "\n";
+
+    table << "\v\n";
+
+    for(auto [i, name] : slice(enumerate(category_long_names), 6, 13)){
+        table << name;
+        for(auto& sheet : sheets){
+            auto& value = sheet.values[i];
+            table << "\t";
+            if(value.current_value >= 0) table << value.current_value;
+            else if(value.potential_value >= 0) table << "(" << value.potential_value << ")";
+        }
+        table << "\n";
+    }
+
+    table << "\v\n";
+    table << "Total lower";
+    for(auto& sheet : sheets) table << "\t" << sheet.total_lower;
+    table << "\n";
+    table << "Total upper";
+    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
+    table << "\n";
+    table << "\v\n";
+    table << "Total";
+    for(auto& sheet : sheets) table << "\t" << sheet.total;
+    table << "\n";
+    table << "\v";
+
+    std::cout << table;
+}
+
 template <class Iter>
 void push_dice_rolls(Iter begin, Iter end)
 {
@@ -33,20 +94,6 @@ void push_dice_rolls(Iter begin, Iter end)
     }
 }
 
-enum class ValueType : int
-{
-    Ones,
-    Twos,
-    Threes,
-    Fours,
-    Fives,
-    Sixes,
-    ThreeOfAKind,
-    FourOfAKind,
-    FullHouse,
-
-};
-
 void do_reroll(std::array<int, 5> &dice)
 {
     bool success = false;
@@ -56,12 +103,13 @@ void do_reroll(std::array<int, 5> &dice)
         std::cout << "What do you want to keep?\n";
         std::string input;
         std::getline(std::cin, input, '\n');
-        std::istringstream ss(input);
 
         std::vector<int> keep_values;
-        int val;
-        while (ss >> val)
-            keep_values.push_back(val);
+        for(auto c : input){
+            if(isdigit(c)){
+                keep_values.push_back(c - '0');
+            }
+        }
 
         success = true;
         for (auto keep_val : keep_values)
@@ -86,12 +134,11 @@ void do_reroll(std::array<int, 5> &dice)
             target_pos++;
         }
     }
-    std::cout << "Rolling " << dice.end() - target_pos << " Dice\n";
     push_dice_rolls(target_pos, dice.end());
     std::sort(dice.begin(), dice.end(), std::greater<>());
 }
 
-void do_round(SheetState &sheet)
+void do_round(SheetState &sheet, const std::vector<SheetState>& sheets)
 {
     std::array<int, 5> dice;
     push_dice_rolls(dice.begin(), dice.end());
@@ -100,14 +147,14 @@ void do_round(SheetState &sheet)
 
     while (true)
     {
+        sheet.calculate_potential_values(dice);
+        show_sheets(sheets);
+
         for (auto d : dice)
         {
             std::cout << d << "\t";
         }
         std::cout << "\n";
-
-        sheet.calculate_potential_values(dice);
-        sheet.show(true);
 
         int action = 2;
         if (remaining_rolls > 0)
@@ -153,60 +200,6 @@ void do_round(SheetState &sheet)
     }
 }
 
-void show_sheets(const std::vector<SheetState>& sheets) {
-    Table table(80);
-    table.set_min_width(4);
-
-    table << "\v\n";
-    for(auto [i, name] : slice(enumerate(category_long_names), 0, 6)){
-        table << name;
-        for(auto& sheet : sheets){
-            auto& value = sheet.values[i];
-            table << "\t";
-            if(value.current_value >= 0) table << value.current_value;
-            else if(value.potential_value >= 0) table << value.potential_value;
-        }
-    }
-
-    table << "\v\n";
-
-    table << "Total";
-    for(auto& sheet : sheets) table << "\t" << sheet.sum_upper;
-    table << "\n";
-    table << "Bonus";
-    for(auto& sheet : sheets) table << "\t" << sheet.bonus;
-    table << "\n";
-    table << "Total upper";
-    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
-    table << "\n";
-
-    table << "\v\n";
-
-    for(auto [i, name] : slice(enumerate(category_long_names), 6, 13)){
-        table << name;
-        for(auto& sheet : sheets){
-            auto& value = sheet.values[i];
-            table << "\t";
-            if(value.current_value >= 0) table << value.current_value;
-            else if(value.potential_value >= 0) table << value.potential_value;
-        }
-    }
-
-    table << "\v\n";
-    table << "Total lower";
-    for(auto& sheet : sheets) table << "\t" << sheet.total_lower;
-    table << "\n";
-    table << "Total upper";
-    for(auto& sheet : sheets) table << "\t" << sheet.total_upper;
-    table << "\n";
-    table << "\v\n";
-    table << "Total";
-    for(auto& sheet : sheets) table << "\t" << sheet.total;
-    table << "\n";
-    table << "\v";
-
-    std::cout << table;
-}
 
 int yahtzee_main()
 {
@@ -216,22 +209,22 @@ int yahtzee_main()
     while (std::cin.get() != '\n');
 
     std::cout << "Please enter their names:\n";
-    std::vector<std::string> names;
+    std::vector<SheetState> sheets;
     for (size_t i = 0; i < player_count; i++)
     {
-        names.emplace_back();
-        std::cin >> names.back();
+        std::string name;
+        std::cin >> name;
+        sheets.emplace_back(name);
     }
     while (std::cin.get() != '\n');
 
-    for (auto &name : names)
-        std::cout << "\"" << name << "\"\n";
+    for(auto i = 0u; i < 13; i++){
+        for(auto& sheet : sheets){
+            do_round(sheet, sheets);
+        }
+    }
 
-    SheetState sheet;
-
-    do_round(sheet);
-
-    sheet.show();
+    show_sheets(sheets);
 
     return 0;
 }
